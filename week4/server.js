@@ -124,16 +124,109 @@ const requestListener = async (req, res) => {
         message: "伺服器錯誤",
       })
     }
+  } else if (req.url === "/api/coaches/skill" && req.method === "GET") {
+    try {
+      const allSkill = await AppDataSource.getRepository("Skill").find({
+        select: ['id', 'name']
+      })
+      sendRespone(res, 200, {
+        status: "success",
+        data: allSkill,
+      })
+    } catch (error) {
+      sendRespone(res, 500, {
+        status: "error",
+        message: "伺服器錯誤",
+      })
+    }
+
+  } else if (req.url === "/api/coaches/skill" && req.method === "POST") {
+    req.on('end', async() =>{
+      try {
+        const data = JSON.parse(body);
+        // 檢查欄位
+        if(isUndefined(data.name) || isNotValidSting(data.name)){
+          sendRespone(res, 400, {
+            status: "error",
+            message: "欄位未填寫正確",
+          })
+          return
+        }
+        // 檢查專長名稱是否重複
+        const skillRepo = AppDataSource.getRepository("Skill")
+        const existSkill = await skillRepo.find({
+          where: {
+            name: data.name
+          }
+        })
+        if(existSkill.length > 0){
+          sendRespone(res, 409, {
+            status: "error",
+            message: "資料重複",
+          })
+          return
+        }
+        // 寫入資料表
+        const newSkill = skillRepo.create({
+          name: data.name
+        })
+        const result = await skillRepo.save(newSkill)
+        sendRespone(res, 201, {
+          status: "success",
+          data: result,
+        })
+      } catch (error) {
+        sendRespone(res, 500, {
+          status: "error",
+          message: "伺服器錯誤",
+        })
+      }
+    })
+
+  } else if (req.url.startsWith("/api/coaches/skill/") && req.method === "DELETE") {
+    try {
+      const skillId = req.url.split('/').pop();
+      // 檢查ID
+      if(isUndefined(skillId) || isNotValidSting(skillId)){
+        sendRespone(res, 400, {
+          status: "error",
+          message: "ID錯誤",
+        })
+        return
+      }
+      const result = await AppDataSource.getRepository("Skill").delete(skillId)
+      if(result.affected === 0){
+        sendRespone(res, 400, {
+          status: "error",
+          message: "ID錯誤",
+        })
+        return
+      }
+      sendRespone(res, 200, {
+        status: "success",
+      })
+    } catch (error) {
+      sendRespone(res, 500, {
+        status: "error",
+        message: "伺服器錯誤",
+      })
+    }
+
   } else if (req.method === "OPTIONS") {
-    res.writeHead(200, headers)
-    res.end()
+    sendRespone(res, 200, {})
+    /*res.writeHead(200, headers)
+    res.end()*/
   } else {
-    res.writeHead(404, headers)
+    sendRespone(res, 404, {
+      status: "failed",
+      message: "無此網站路由",
+    })
+    /*res.writeHead(404, headers)
     res.write(JSON.stringify({
       status: "failed",
       message: "無此網站路由",
     }))
-    res.end()
+    res.end()*/
   }
 }
 
