@@ -3,6 +3,9 @@ const config = require('../config/index')
 
 const CreditPackage = require('../entities/CreditPackages')
 const Skill = require('../entities/Skill')
+const User = require('../entities/User')
+const Coach = require('../entities/Coach')
+const Course = require('../entities/Course')
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -15,7 +18,10 @@ const dataSource = new DataSource({
   poolSize: 10,
   entities: [
     CreditPackage,
-    Skill
+    Skill,
+    User,
+    Coach,
+    Course,
   ],
   ssl: config.get('db.ssl')
 })
