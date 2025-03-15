@@ -1,21 +1,28 @@
 const express = require('express')
 
 const router = express.Router()
+const config = require('../config/index')
 const { dataSource } = require('../db/data-source')
 const logger = require('../utils/logger')('Admin')
+const auth = require('../middlewares/auth')({
+    secret: config.get('secret').jwtSecret,
+    userRepository: dataSource.getRepository('User'),
+    logger
+})
+const isCoach = require('../middlewares/isCoach')
 const { isUndefined, isNotValidString, isNotValidInteger, isNotValidUuid } = require("../utils/fieldValid");
 
 // 新增教練課程資料 {url}/api/admin/coaches/courses
-router.post('/coaches/courses', async (req, res, next) => {
+router.post('/coaches/courses', auth, isCoach, async (req, res, next) => {
     try {
+        const { id } = req.user
         // 接收請求參數
         const {
-            user_id: userId, skill_id: skillId, name, description, start_at: startAt, end_at: endAt,
+            skill_id: skillId, name, description, start_at: startAt, end_at: endAt,
             max_participants: maxParticipants, meeting_url: meetingUrl
         } = req.body
         // 驗證必填欄位
-        if (isUndefined(userId) || isNotValidString(userId) ||
-            isUndefined(skillId) || isNotValidString(skillId) ||
+        if (isUndefined(skillId) || isNotValidString(skillId) ||
             isUndefined(name) || isNotValidString(name) ||
             isUndefined(description) || isNotValidString(description) ||
             isUndefined(startAt) || isNotValidString(startAt) ||
@@ -30,32 +37,10 @@ router.post('/coaches/courses', async (req, res, next) => {
             return
         }
         
-        const userRepo = dataSource.getRepository('User')
-        // 查詢使用者ID是否存在,是否為教練
-        const existingUser = await userRepo.findOne({
-            select: ['id', 'name', 'role'],
-            where: { id: userId }
-        })
-        if (!existingUser) {
-            logger.warn('使用者不存在')
-            res.status(400).json({
-                status: 'failed',
-                message: '使用者不存在'
-            })
-            return
-        } else if (existingUser.role !== 'COACH') {
-            logger.warn('使用者尚未成為教練')
-            res.status(400).json({
-                status: 'failed',
-                message: '使用者尚未成為教練'
-            })
-            return
-        }
-        
         const courseRepo = dataSource.getRepository('Course')
         // 建立新的課程資料
         const newCourse = courseRepo.create({
-            user_id: userId,
+            user_id: id,
             skill_id: skillId,
             name,
             description,
@@ -83,8 +68,9 @@ router.post('/coaches/courses', async (req, res, next) => {
 })
 
 // 編輯教練課程資料 {url}/api/admin/coaches/courses/:courseId
-router.put('/coaches/courses/:courseId', async (req, res, next) => {
+router.put('/coaches/courses/:courseId', auth, isCoach, async (req, res, next) => {
     try {
+        const { id } = req.user
         // 接收課程 ID參數
         const { courseId } = req.params
         // 接收請求參數
@@ -120,7 +106,7 @@ router.put('/coaches/courses/:courseId', async (req, res, next) => {
         const courseRepo = dataSource.getRepository('Course')
         // 查詢課程ID是否存在
         const existingCourse = await courseRepo.findOne({
-            where: { id: courseId }
+            where: { id: courseId, user_id: id }
         })
         if (!existingCourse) {
             logger.warn('課程不存在')
