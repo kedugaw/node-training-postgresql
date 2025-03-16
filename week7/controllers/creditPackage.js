@@ -1,17 +1,8 @@
 const { dataSource } = require('../db/data-source')
 const logger = require('../utils/logger')('CreditPackageController')
+const { isUndefined, isNotValidInteger, isNotValidString, isNotValidUuid } = require("../utils/fieldValid")
+const appError = require("../utils/appError")
 
-function isUndefined (value) {
-  return value === undefined
-}
-
-function isNotValidSting (value) {
-  return typeof value !== 'string' || value.trim().length === 0 || value === ''
-}
-
-function isNotValidInteger (value) {
-  return typeof value !== 'number' || value < 0 || value % 1 !== 0
-}
 
 async function getAll (req, res, next) {
   try {
@@ -31,14 +22,10 @@ async function getAll (req, res, next) {
 async function post (req, res, next) {
   try {
     const { name, credit_amount: creditAmount, price } = req.body
-    if (isUndefined(name) || isNotValidSting(name) ||
+    if (isUndefined(name) || isNotValidString(name) ||
       isUndefined(creditAmount) || isNotValidInteger(creditAmount) ||
       isUndefined(price) || isNotValidInteger(price)) {
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, "欄位未填寫正確"))
     }
     const creditPackageRepo = dataSource.getRepository('CreditPackage')
     const existCreditPackage = await creditPackageRepo.findOne({
@@ -47,11 +34,7 @@ async function post (req, res, next) {
       }
     })
     if (existCreditPackage) {
-      res.status(409).json({
-        status: 'failed',
-        message: '資料重複'
-      })
-      return
+      return next(appError(409, "資料重複"))
     }
     const newCreditPackage = await creditPackageRepo.create({
       name,
@@ -80,11 +63,7 @@ async function postUserBuy (req, res, next) {
       }
     })
     if (!creditPackage) {
-      res.status(400).json({
-        status: 'failed',
-        message: 'ID錯誤'
-      })
-      return
+      return next(appError(400, "ID錯誤"))
     }
     const creditPurchaseRepo = dataSource.getRepository('CreditPurchase')
     const newPurchase = await creditPurchaseRepo.create({
@@ -108,20 +87,12 @@ async function postUserBuy (req, res, next) {
 async function deletePackage (req, res, next) {
   try {
     const { creditPackageId } = req.params
-    if (isUndefined(creditPackageId) || isNotValidSting(creditPackageId)) {
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+    if (isNotValidUuid(creditPackageId) || isUndefined(creditPackageId) || isNotValidString(creditPackageId)) {
+      return next(appError(400, "欄位未填寫正確"))
     }
     const result = await dataSource.getRepository('CreditPackage').delete(creditPackageId)
     if (result.affected === 0) {
-      res.status(400).json({
-        status: 'failed',
-        message: 'ID錯誤'
-      })
-      return
+      return next(appError(400, "ID錯誤"))
     }
     res.status(200).json({
       status: 'success',

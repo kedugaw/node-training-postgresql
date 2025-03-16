@@ -1,13 +1,8 @@
 const { dataSource } = require('../db/data-source')
 const logger = require('../utils/logger')('CoachesController')
+const { isUndefined, isNotValidInteger, isNotValidString, isNotValidUuid } = require("../utils/fieldValid")
+const appError = require("../utils/appError")
 
-function isUndefined (value) {
-  return value === undefined
-}
-
-function isNotValidSting (value) {
-  return typeof value !== 'string' || value.trim().length === 0 || value === ''
-}
 
 async function getCoaches (req, res, next) {
   try {
@@ -44,12 +39,8 @@ async function getCoaches (req, res, next) {
 async function getCoachDetail (req, res, next) {
   try {
     const { coachId } = req.params
-    if (isUndefined(coachId) || isNotValidSting(coachId)) {
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+    if (isNotValidUuid(coachId) || isUndefined(coachId) || isNotValidString(coachId)) {
+      return next(appError(400, "欄位未填寫正確"))
     }
     const coach = await dataSource.getRepository('Coach').findOne({
       select: {
@@ -74,11 +65,7 @@ async function getCoachDetail (req, res, next) {
     })
     if (!coach) {
       logger.warn('找不到該教練')
-      res.status(400).json({
-        status: 'failed',
-        message: '找不到該教練'
-      })
-      return
+      return next(appError(400, "找不到該教練"))
     }
     res.status(200).json({
       status: 'success',
@@ -104,12 +91,8 @@ async function getCoachDetail (req, res, next) {
 async function getCoachCourses (req, res, next) {
   try {
     const { coachId } = req.params
-    if (isUndefined(coachId) || isNotValidSting(coachId)) {
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+    if (isNotValidUuid(coachId) || isUndefined(coachId) || isNotValidString(coachId)) {
+      return next(appError(400, "欄位未填寫正確"))
     }
     const coach = await dataSource.getRepository('Coach').findOne({
       select: {
@@ -128,11 +111,7 @@ async function getCoachCourses (req, res, next) {
     })
     if (!coach) {
       logger.warn('找不到該教練')
-      res.status(400).json({
-        status: 'failed',
-        message: '找不到該教練'
-      })
-      return
+      return next(appError(400, "找不到該教練"))
     }
     logger.info(`coach: ${JSON.stringify(coach)}`)
     const courses = await dataSource.getRepository('Course').find({

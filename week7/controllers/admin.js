@@ -4,6 +4,9 @@ const utc = require('dayjs/plugin/utc')
 const { dataSource } = require('../db/data-source')
 const logger = require('../utils/logger')('AdminController')
 
+const { isUndefined, isNotValidInteger, isNotValidString, isNotValidUuid } = require("../utils/fieldValid")
+const appError = require("../utils/appError")
+
 dayjs.extend(utc)
 const monthMap = {
   january: 1,
@@ -20,17 +23,6 @@ const monthMap = {
   december: 12
 }
 
-function isUndefined (value) {
-  return value === undefined
-}
-
-function isNotValidSting (value) {
-  return typeof value !== 'string' || value.trim().length === 0 || value === ''
-}
-
-function isNotValidInteger (value) {
-  return typeof value !== 'number' || value < 0 || value % 1 !== 0
-}
 
 async function postCourse (req, res, next) {
   try {
@@ -39,19 +31,15 @@ async function postCourse (req, res, next) {
       skill_id: skillId, name, description, start_at: startAt, end_at: endAt,
       max_participants: maxParticipants, meeting_url: meetingUrl
     } = req.body
-    if (isUndefined(skillId) || isNotValidSting(skillId) ||
-    isUndefined(name) || isNotValidSting(name) ||
-    isUndefined(description) || isNotValidSting(description) ||
-    isUndefined(startAt) || isNotValidSting(startAt) ||
-    isUndefined(endAt) || isNotValidSting(endAt) ||
-    isUndefined(maxParticipants) || isNotValidInteger(maxParticipants) ||
-    isUndefined(meetingUrl) || isNotValidSting(meetingUrl) || !meetingUrl.startsWith('https')) {
+    if (isUndefined(skillId) || isNotValidString(skillId) ||
+      isUndefined(name) || isNotValidString(name) ||
+      isUndefined(description) || isNotValidString(description) ||
+      isUndefined(startAt) || isNotValidString(startAt) ||
+      isUndefined(endAt) || isNotValidString(endAt) ||
+      isUndefined(maxParticipants) || isNotValidInteger(maxParticipants) ||
+      isUndefined(meetingUrl) || isNotValidString(meetingUrl) || !meetingUrl.startsWith('https')) {
       logger.warn('欄位未填寫正確')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, "欄位未填寫正確"))
     }
     const userRepository = dataSource.getRepository('User')
     const existingUser = await userRepository.findOne({
@@ -60,11 +48,7 @@ async function postCourse (req, res, next) {
     })
     if (!existingUser) {
       logger.warn('使用者不存在')
-      res.status(400).json({
-        status: 'failed',
-        message: '使用者不存在'
-      })
-      return
+      return next(appError(400, "使用者不存在"))
     }
     const courseRepo = dataSource.getRepository('Course')
     const newCourse = courseRepo.create({
@@ -99,11 +83,7 @@ async function getCoachRevenue (req, res, next) {
     const { month } = req.query
     if (isUndefined(month) || !Object.prototype.hasOwnProperty.call(monthMap, month)) {
       logger.warn('欄位未填寫正確')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, "欄位未填寫正確"))
     }
     const courseRepo = dataSource.getRepository('Course')
     const courses = await courseRepo.find({
@@ -270,20 +250,16 @@ async function putCoachCourseDetail (req, res, next) {
       skill_id: skillId, name, description, start_at: startAt, end_at: endAt,
       max_participants: maxParticipants, meeting_url: meetingUrl
     } = req.body
-    if (isNotValidSting(courseId) ||
-      isUndefined(skillId) || isNotValidSting(skillId) ||
-      isUndefined(name) || isNotValidSting(name) ||
-      isUndefined(description) || isNotValidSting(description) ||
-      isUndefined(startAt) || isNotValidSting(startAt) ||
-      isUndefined(endAt) || isNotValidSting(endAt) ||
+    if (isNotValidString(courseId) ||
+      isUndefined(skillId) || isNotValidString(skillId) ||
+      isUndefined(name) || isNotValidString(name) ||
+      isUndefined(description) || isNotValidString(description) ||
+      isUndefined(startAt) || isNotValidString(startAt) ||
+      isUndefined(endAt) || isNotValidString(endAt) ||
       isUndefined(maxParticipants) || isNotValidInteger(maxParticipants) ||
-      isUndefined(meetingUrl) || isNotValidSting(meetingUrl) || !meetingUrl.startsWith('https')) {
+      isUndefined(meetingUrl) || isNotValidString(meetingUrl) || !meetingUrl.startsWith('https')) {
       logger.warn('欄位未填寫正確')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, "欄位未填寫正確"))
     }
     const courseRepo = dataSource.getRepository('Course')
     const existingCourse = await courseRepo.findOne({
@@ -291,11 +267,7 @@ async function putCoachCourseDetail (req, res, next) {
     })
     if (!existingCourse) {
       logger.warn('課程不存在')
-      res.status(400).json({
-        status: 'failed',
-        message: '課程不存在'
-      })
-      return
+      return next(appError(400, "課程不存在"))
     }
     const updateCourse = await courseRepo.update({
       id: courseId
@@ -310,11 +282,7 @@ async function putCoachCourseDetail (req, res, next) {
     })
     if (updateCourse.affected === 0) {
       logger.warn('更新課程失敗')
-      res.status(400).json({
-        status: 'failed',
-        message: '更新課程失敗'
-      })
-      return
+      return next(appError(400, "更新課程失敗"))
     }
     const savedCourse = await courseRepo.findOne({
       where: { id: courseId }
@@ -335,21 +303,13 @@ async function postCoach (req, res, next) {
   try {
     const { userId } = req.params
     const { experience_years: experienceYears, description, profile_image_url: profileImageUrl = null } = req.body
-    if (isUndefined(experienceYears) || isNotValidInteger(experienceYears) || isUndefined(description) || isNotValidSting(description)) {
+    if (isUndefined(experienceYears) || isNotValidInteger(experienceYears) || isUndefined(description) || isNotValidString(description)) {
       logger.warn('欄位未填寫正確')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, "欄位未填寫正確"))
     }
-    if (profileImageUrl && !isNotValidSting(profileImageUrl) && !profileImageUrl.startsWith('https')) {
+    if (profileImageUrl && !isNotValidString(profileImageUrl) && !profileImageUrl.startsWith('https')) {
       logger.warn('大頭貼網址錯誤')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, "欄位未填寫正確"))
     }
     const userRepository = dataSource.getRepository('User')
     const existingUser = await userRepository.findOne({
@@ -358,18 +318,10 @@ async function postCoach (req, res, next) {
     })
     if (!existingUser) {
       logger.warn('使用者不存在')
-      res.status(400).json({
-        status: 'failed',
-        message: '使用者不存在'
-      })
-      return
+      return next(appError(400, "使用者不存在"))
     } else if (existingUser.role === 'COACH') {
       logger.warn('使用者已經是教練')
-      res.status(409).json({
-        status: 'failed',
-        message: '使用者已經是教練'
-      })
-      return
+      return next(appError(400, "使用者已經是教練"))
     }
     const coachRepo = dataSource.getRepository('Coach')
     const newCoach = coachRepo.create({
@@ -386,11 +338,7 @@ async function postCoach (req, res, next) {
     })
     if (updatedUser.affected === 0) {
       logger.warn('更新使用者失敗')
-      res.status(400).json({
-        status: 'failed',
-        message: '更新使用者失敗'
-      })
-      return
+      return next(appError(400, "更新使用者失敗"))
     }
     const savedCoach = await coachRepo.save(newCoach)
     const savedUser = await userRepository.findOne({
@@ -420,24 +368,16 @@ async function putCoachProfile (req, res, next) {
       skill_ids: skillIds
     } = req.body
     if (isUndefined(experienceYears) || isNotValidInteger(experienceYears) ||
-      isUndefined(description) || isNotValidSting(description) ||
-      isUndefined(profileImageUrl) || isNotValidSting(profileImageUrl) ||
+      isUndefined(description) || isNotValidString(description) ||
+      isUndefined(profileImageUrl) || isNotValidString(profileImageUrl) ||
       !profileImageUrl.startsWith('https') ||
       isUndefined(skillIds) || !Array.isArray(skillIds)) {
       logger.warn('欄位未填寫正確')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, "欄位未填寫正確"))
     }
-    if (skillIds.length === 0 || skillIds.every(skill => isUndefined(skill) || isNotValidSting(skill))) {
+    if (skillIds.length === 0 || skillIds.every(skill => isUndefined(skill) || isNotValidString(skill))) {
       logger.warn('欄位未填寫正確')
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+      return next(appError(400, "欄位未填寫正確"))
     }
     const coachRepo = dataSource.getRepository('Coach')
     const coach = await coachRepo.findOne({

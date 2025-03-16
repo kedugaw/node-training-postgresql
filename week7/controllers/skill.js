@@ -1,13 +1,8 @@
 const { dataSource } = require('../db/data-source')
 const logger = require('../utils/logger')('SkillController')
+const { isUndefined, isNotValidString, isNotValidUuid } = require("../utils/fieldValid")
+const appError = require("../utils/appError")
 
-function isUndefined (value) {
-  return value === undefined
-}
-
-function isNotValidSting (value) {
-  return typeof value !== 'string' || value.trim().length === 0 || value === ''
-}
 
 async function getAll (req, res, next) {
   try {
@@ -27,12 +22,8 @@ async function getAll (req, res, next) {
 async function post (req, res, next) {
   try {
     const { name } = req.body
-    if (isUndefined(name) || isNotValidSting(name)) {
-      res.status(400).json({
-        status: 'failed',
-        message: '欄位未填寫正確'
-      })
-      return
+    if (isUndefined(name) || isNotValidString(name)) {
+      return next(appError(400, "欄位未填寫正確"))
     }
     const skillRepo = dataSource.getRepository('Skill')
     const existSkill = await skillRepo.findOne({
@@ -41,11 +32,7 @@ async function post (req, res, next) {
       }
     })
     if (existSkill) {
-      res.status(409).json({
-        status: 'failed',
-        message: '資料重複'
-      })
-      return
+      return next(appError(400, "資料重複"))
     }
     const newSkill = await skillRepo.create({
       name
@@ -64,20 +51,12 @@ async function post (req, res, next) {
 async function deletePackage (req, res, next) {
   try {
     const { skillId } = req.params
-    if (isUndefined(skillId) || isNotValidSting(skillId)) {
-      res.status(400).json({
-        status: 'failed',
-        message: 'ID錯誤'
-      })
-      return
+    if (isNotValidUuid(skillId) || isUndefined(skillId) || isNotValidString(skillId)) {
+      return next(appError(400, "ID錯誤"))
     }
     const result = await dataSource.getRepository('Skill').delete(skillId)
     if (result.affected === 0) {
-      res.status(400).json({
-        status: 'failed',
-        message: 'ID錯誤'
-      })
-      return
+      return next(appError(400, "ID錯誤"))
     }
     res.status(200).json({
       status: 'success'
